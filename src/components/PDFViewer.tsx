@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Document, pdfjs } from "react-pdf";
 import { toast } from "sonner";
@@ -172,12 +171,12 @@ export const PDFViewer = ({ file }: PDFViewerProps) => {
         />
       </div>
       
-      <div className="flex">
-        <div className={`${showChat ? 'w-1/2' : 'w-full'} transition-all duration-300`}>
+      <div className="flex flex-col lg:flex-row h-[85vh]">
+        {/* PDF Viewer Section */}
+        <div className={`${showChat ? 'lg:w-1/2' : 'w-full'} ${showChat ? 'h-1/2 lg:h-full' : 'h-full'} transition-all duration-300`}>
           <div 
             ref={containerRef}
-            className="max-h-[85vh] overflow-y-auto px-4 relative"
-            style={{ height: '85vh' }}
+            className="h-full overflow-y-auto px-4 relative"
           >
             <Document
               file={file}
@@ -228,8 +227,9 @@ export const PDFViewer = ({ file }: PDFViewerProps) => {
           )}
         </div>
         
+        {/* Chat Section */}
         {showChat && ocrText && (
-          <div className="w-1/2">
+          <div className={`${showChat ? 'lg:w-1/2' : 'w-0'} ${showChat ? 'h-1/2 lg:h-full' : 'h-0'} transition-all duration-300 border-t lg:border-t-0 lg:border-l`}>
             <ChatBot 
               ocrText={ocrText} 
               onClose={() => setShowChat(false)} 
