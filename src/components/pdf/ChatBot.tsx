@@ -34,21 +34,49 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
     
     const userMessage = { role: "user" as const, content: input.trim() };
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input.trim();
     setInput("");
     setIsProcessing(true);
     
     let loadingToastId: string | number = "";
     
     try {
+      // Add thinking message
       setMessages(prev => [...prev, { role: "assistant", content: "Thinking..." }]);
       
       loadingToastId = toast.loading("Processing your question...", {
-        duration: 10000,
+        duration: 15000,
         position: "top-right"
       });
       
       const OPENROUTER_API_KEY = "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";
       const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+      
+      console.log("Making API request to OpenRouter...");
+      
+      const requestBody = {
+        model: "microsoft/wizardlm-2-7b",
+        messages: [
+          {
+            role: "system",
+            content: `You are a helpful assistant that answers questions about PDF content. Be clear, concise, and helpful.
+
+Here's the PDF content to reference:
+${ocrText}
+
+Please answer questions based on this content. If the answer isn't in the PDF, say so clearly.`
+          },
+          {
+            role: "user",
+            content: currentInput
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+        stream: false
+      };
+
+      console.log("Request body:", requestBody);
       
       const response = await fetch(OPENROUTER_API_URL, {
         method: 'POST',
@@ -58,63 +86,77 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
           'X-Title': 'PDF Chat Assistant',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          model: "deepseek/deepseek-r1-0528",
-          messages: [
-            {
-              role: "system",
-              content: `You are a helpful assistant that answers questions about PDF content in simple, clear language.
-              
-              Guidelines:
-              1. Use simple, easy-to-understand language
-              2. Format answers with bullet points when helpful
-              3. Use <strong> tags for important keywords
-              4. Give complete answers with all relevant information
-              5. If information isn't in the PDF, mention that and provide helpful context
-              6. Be supportive and encouraging
-              
-              Here's the PDF content: ${ocrText}`
-            },
-            ...messages.filter(m => m.role !== "assistant" || m.content !== "Thinking..."),
-            {
-              role: "user",
-              content: input.trim()
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 1000
-        })
+        body: JSON.stringify(requestBody)
       });
+      
+      console.log("Response status:", response.status);
+      console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+      
+      // Remove thinking message
+      setMessages(prev => prev.filter(m => m.content !== "Thinking..."));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("OpenRouter API error response:", errorText);
+        
+        let errorMessage = "Failed to get response from AI";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error?.message || errorMessage;
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        
+        throw new Error(`API Error (${response.status}): ${errorMessage}`);
+      }
+      
+      const data = await response.json();
+      console.log("API response data:", data);
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error("Invalid response format from API");
+      }
+      
+      const aiResponse = data.choices[0].message.content;
+      
+      if (!aiResponse || aiResponse.trim() === "") {
+        throw new Error("Empty response from AI");
+      }
+      
+      setMessages(prev => [...prev, { role: "assistant", content: aiResponse }]);
       
       if (loadingToastId) {
         toast.dismiss(loadingToastId);
       }
-      
-      setMessages(prev => prev.filter(m => m.content !== "Thinking..."));
-      
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error("OpenRouter API error:", errorData);
-        throw new Error(`OpenRouter API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
-      
-      setMessages(prev => [...prev, { role: "assistant", content: aiResponse }]);
+      toast.success("Response generated successfully!", { duration: 2000, position: "top-right" });
       
     } catch (error) {
-      console.error("Error generating response:", error);
+      console.error("Error in handleSubmit:", error);
+      
+      // Remove thinking message if it exists
       setMessages(prev => prev.filter(m => m.content !== "Thinking..."));
+      
+      let errorMessage = "Sorry, I encountered an error while processing your question.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("Failed to fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.message.includes("API Error")) {
+          errorMessage = `API Error: ${error.message}`;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       setMessages(prev => [...prev, { 
         role: "assistant", 
-        content: "Sorry, I encountered an error while processing your question. Please try again." 
+        content: `${errorMessage} Please try again or rephrase your question.` 
       }]);
       
       if (loadingToastId) {
         toast.dismiss(loadingToastId);
       }
-      toast.error("Failed to generate response", { duration: 3000, position: "top-right" });
+      toast.error("Failed to generate response", { duration: 4000, position: "top-right" });
     } finally {
       setIsProcessing(false);
     }
@@ -150,7 +192,11 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
               {message.content === "Thinking..." ? (
                 <div className="flex items-center space-x-2">
                   <span>Thinking</span>
-                  <span className="animate-pulse">...</span>
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
                 </div>
               ) : (
                 <div 
@@ -179,7 +225,7 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about the PDF..."
+            placeholder="Ask about the PDF content..."
             className="flex-grow px-3 py-2 text-sm md:text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             disabled={isProcessing}
           />
