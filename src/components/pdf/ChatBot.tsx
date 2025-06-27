@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -20,14 +21,32 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
   ]);
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [apiKey, setApiKey] = useState(localStorage.getItem("openrouter_api_key") || "");
+  const [showApiKeyInput, setShowApiKeyInput] = useState(!apiKey);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const saveApiKey = () => {
+    if (apiKey.trim()) {
+      localStorage.setItem("openrouter_api_key", apiKey.trim());
+      setShowApiKeyInput(false);
+      toast.success("API key saved successfully!");
+    } else {
+      toast.error("Please enter a valid API key");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!apiKey.trim()) {
+      toast.error("Please enter your OpenRouter API key first");
+      setShowApiKeyInput(true);
+      return;
+    }
     
     if (!input.trim() || isProcessing) return;
     
@@ -48,13 +67,12 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
         position: "top-right"
       });
       
-      const OPENROUTER_API_KEY = "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";
       const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
       
       console.log("Making API request to OpenRouter...");
       
       const requestBody = {
-        model: "microsoft/wizardlm-2-7b",
+        model: "deepseek/deepseek-r1-0528:free",
         messages: [
           {
             role: "system",
@@ -71,8 +89,7 @@ Please answer questions based on this content. If the answer isn't in the PDF, s
           }
         ],
         temperature: 0.7,
-        max_tokens: 1000,
-        stream: false
+        max_tokens: 1000
       };
 
       console.log("Request body:", requestBody);
@@ -80,7 +97,7 @@ Please answer questions based on this content. If the answer isn't in the PDF, s
       const response = await fetch(OPENROUTER_API_URL, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'HTTP-Referer': window.location.origin,
           'X-Title': 'PDF Chat Assistant',
           'Content-Type': 'application/json'
@@ -161,6 +178,55 @@ Please answer questions based on this content. If the answer isn't in the PDF, s
     }
   };
 
+  if (showApiKeyInput) {
+    return (
+      <div className="flex flex-col h-full border-l bg-white">
+        {/* Header */}
+        <div className="p-3 md:p-4 border-b flex justify-between items-center bg-slate-50 shrink-0">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-primary" />
+            <h3 className="text-base md:text-lg font-medium truncate">PDF Chat Setup</h3>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} className="shrink-0">
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+        
+        {/* API Key Setup */}
+        <div className="flex-grow p-4 flex flex-col justify-center">
+          <div className="max-w-md mx-auto w-full space-y-4">
+            <div className="text-center space-y-2">
+              <h4 className="text-lg font-medium">Connect to OpenRouter AI</h4>
+              <p className="text-sm text-gray-600">
+                To use the chat feature, you need an OpenRouter API key. Get your free key at{" "}
+                <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  openrouter.ai
+                </a>
+              </p>
+            </div>
+            
+            <div className="space-y-3">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter your OpenRouter API key"
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <Button onClick={saveApiKey} className="w-full">
+                Save API Key
+              </Button>
+            </div>
+            
+            <p className="text-xs text-gray-500 text-center">
+              Your API key is stored locally in your browser and never sent to our servers.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full border-l bg-white">
       {/* Header - Mobile optimized */}
@@ -169,9 +235,19 @@ Please answer questions based on this content. If the answer isn't in the PDF, s
           <MessageSquare className="w-5 h-5 text-primary" />
           <h3 className="text-base md:text-lg font-medium truncate">PDF Chat</h3>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose} className="shrink-0">
-          <X className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShowApiKeyInput(true)}
+            className="text-xs"
+          >
+            API Key
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClose} className="shrink-0">
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
       
       {/* Messages - Scrollable area */}
