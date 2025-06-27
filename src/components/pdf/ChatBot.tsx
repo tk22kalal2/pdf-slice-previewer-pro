@@ -49,7 +49,7 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
         position: "top-right"
       });
       
-      const OPENROUTER_API_KEY = "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";
+      const OPENROUTER_API_KEY = "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";
       const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
       
       console.log("Making API request to OpenRouter...");
