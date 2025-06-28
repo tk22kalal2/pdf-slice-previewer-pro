@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -23,8 +22,8 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fixed API key
-  const API_KEY = "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";
+  // Use environment variable for API key
+  const API_KEY = import.meta.env.VITE_API_KEY;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -34,6 +33,11 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
     e.preventDefault();
     
     if (!input.trim() || isProcessing) return;
+    
+    if (!API_KEY) {
+      toast.error("API key not configured. Please check your environment variables.");
+      return;
+    }
     
     const userMessage = { role: "user" as const, content: input.trim() };
     setMessages(prev => [...prev, userMessage]);
@@ -55,7 +59,7 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
       const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
       
       console.log("Making API request to OpenRouter...");
-      console.log("Using API Key:", API_KEY.substring(0, 20) + "...");
+      console.log("Using API Key:", API_KEY ? API_KEY.substring(0, 20) + "..." : "Not provided");
       
       const requestBody = {
         model: "deepseek/deepseek-r1-0528:free",
