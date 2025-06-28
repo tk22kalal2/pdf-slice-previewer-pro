@@ -66,8 +66,17 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
         messages: [
           {
             role: "system",
-            content: `You are a helpful assistant that answers questions about PDF content. Be clear, concise, and helpful.
-
+            content: `You are a helpful assistant that answers questions about PDF content. 
+            Explain concepts as if teaching a 7th-grade student - use simple language and start from basic fundamentals.
+            
+            RESPONSE REQUIREMENTS:
+            1. ALWAYS format responses using HTML tags
+            2. Use <h3> for main headings and <h4> for subheadings
+            3. Break explanations into bullet points using <ul> and <li>
+            4. Present information in a logical, step-by-step manner
+            5. Keep paragraphs short (2-3 sentences max)
+            6. If answer isn't in the PDF than also answer user relating to pdf content from self knowledge.
+            
 Here's the PDF content to reference:
 ${ocrText}
 
