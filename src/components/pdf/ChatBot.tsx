@@ -73,8 +73,8 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
             1. ALWAYS format responses using HTML tags
             2. Use <h3> for main headings and <h4> for subheadings
             3. Break explanations into bullet points using <ul> and <li>
-            4. Present information in a logical, step-by-step manner
-            5. Keep paragraphs short (2-3 sentences max)
+            4. Present information in a logical but simple language, step-by-step manner
+            5. Keep paragraphs short (2-3 sentences max) and easy to understand
             6. If answer isn't in the PDF than also answer user relating to pdf content from self knowledge.
             
 Here's the PDF content to reference:
