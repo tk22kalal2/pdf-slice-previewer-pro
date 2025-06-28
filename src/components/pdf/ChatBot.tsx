@@ -55,6 +55,7 @@ export const ChatBot = ({ ocrText, onClose }: ChatBotProps) => {
       const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
       
       console.log("Making API request to OpenRouter...");
+      console.log("Using API Key:", API_KEY.substring(0, 20) + "...");
       
       const requestBody = {
         model: "deepseek/deepseek-r1-0528:free",
@@ -83,38 +84,41 @@ Please answer questions based on this content. If the answer isn't in the PDF, s
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json',
           'HTTP-Referer': window.location.origin,
-          'X-Title': 'PDF Chat Assistant',
-          'Content-Type': 'application/json'
+          'X-Title': 'PDF Chat Assistant'
         },
         body: JSON.stringify(requestBody)
       });
       
       console.log("Response status:", response.status);
-      console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+      console.log("Response ok:", response.ok);
       
       // Remove thinking message
       setMessages(prev => prev.filter(m => m.content !== "Thinking..."));
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("OpenRouter API error response:", errorText);
+        console.error("API error response:", errorText);
         
         let errorMessage = "Failed to get response from AI";
         try {
           const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error?.message || errorMessage;
+          console.error("Parsed error data:", errorData);
+          errorMessage = errorData.error?.message || errorData.message || errorMessage;
         } catch (e) {
           console.error("Error parsing error response:", e);
+          errorMessage = `HTTP ${response.status}: ${errorText}`;
         }
         
-        throw new Error(`API Error (${response.status}): ${errorMessage}`);
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
       console.log("API response data:", data);
       
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error("Invalid response structure:", data);
         throw new Error("Invalid response format from API");
       }
       
@@ -140,12 +144,16 @@ Please answer questions based on this content. If the answer isn't in the PDF, s
       let errorMessage = "Sorry, I encountered an error while processing your question.";
       
       if (error instanceof Error) {
-        if (error.message.includes("Failed to fetch")) {
+        if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
           errorMessage = "Network error. Please check your internet connection and try again.";
-        } else if (error.message.includes("API Error")) {
-          errorMessage = `API Error: ${error.message}`;
+        } else if (error.message.includes("401")) {
+          errorMessage = "Authentication error. The API key may be invalid.";
+        } else if (error.message.includes("429")) {
+          errorMessage = "Rate limit exceeded. Please wait a moment and try again.";
+        } else if (error.message.includes("404")) {
+          errorMessage = "The AI model is not available. Please try again later.";
         } else {
-          errorMessage = error.message;
+          errorMessage = `Error: ${error.message}`;
         }
       }
       
